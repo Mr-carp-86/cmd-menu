@@ -863,9 +863,21 @@ function renderDetail(c) {
   const syn = el('button', 'code');
   syn.type = 'button';
   syn.textContent = c.syntax;
-  syn.title = '点击复制';
-  syn.addEventListener('click', () => copyText(c.syntax));
-  sec('语法', syn);
+  /* 语法可能是「用法模板」（<...> 占位符、[-...] 可选项）：整行照抄进 PowerShell / cmd 会直接报
+     “< 运算符是为将来使用而保留的” 这类语法错误。这类条目点语法块复制的是可执行写法，而不是模板。 */
+  const synIsTpl = /\[\-|<[^>]*[A-Za-z\u4e00-\u9fa5][^>]*>/.test(c.syntax || '');
+  syn.title = synIsTpl ? '语法是模板：<...> 是占位符，点击复制可执行写法' : '点击复制';
+  syn.addEventListener('click', () => {
+    if (synIsTpl) copyText(c.run || c.cmd, '已复制可执行写法（语法里的 <...> 是占位符，需替换成实际值）');
+    else copyText(c.syntax);
+  });
+  if (synIsTpl) {
+    const wrap = el('div');
+    wrap.append(syn, el('p', 'ex-desc', '语法是用法模板：<...> 是占位符、[…] 是可选项，整行照抄会报错。点上面的语法块复制的是可直接执行的写法。'));
+    sec('语法 · 模板', wrap);
+  } else {
+    sec('语法', syn);
+  }
 
   /* 示例：命令 + 这句在做什么 */
   const ex = el('div', 'exlist');
